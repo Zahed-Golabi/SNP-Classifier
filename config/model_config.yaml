@@ -1,0 +1,25 @@
+model:
+  accuracy: 0.9090909090909091
+  best_model: LogisticRegression
+  f1: 0.9411764705882353
+  features_set:
+    rfe:
+    - n_rs3188513
+    - n_rs133061
+    - n_rs10102851
+    - n_rs8375668
+    - n_rs5274755
+    - n_rs9280789
+    - n_rs2515462
+    - n_rs344903
+    - n_rs0370
+    - n_rs933069
+  name: SNP_Classifier
+  parameters:
+    C: 100
+    max_iter: 100
+    penalty: l1
+    solver: liblinear
+  precision: 1.0
+  recall: 0.8888888888888888
+  target_variable: target
