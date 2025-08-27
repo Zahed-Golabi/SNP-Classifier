@@ -80,8 +80,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ steps.meta.coutputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: zahedgolabi/fastapi:latest
           context: "."
           file: "dockerfile"
 
