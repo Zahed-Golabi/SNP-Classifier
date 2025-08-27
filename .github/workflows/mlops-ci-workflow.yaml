@@ -29,4 +29,15 @@ jobs:
 #      - name: Run tests
 #        run: |
 #          pytest tests/
+      - name: Run Data Processing
+        run: |
+          python src/data/run_processing.py
+
+      - name: Train the Model
+        run: |
+          python src/models/train_model.py \
+          --config configs/model_config.yaml \
+          --data data/processed/cleaned_snp_data.csv \
+          --models-dir models \
+          --mlflow-tracking-uri http://localhost:5555
 
