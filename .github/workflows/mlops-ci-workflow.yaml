@@ -82,7 +82,7 @@ jobs:
           push: true
           tags: zahedgolabi/fastapi:latest
           context: "."
-          file: "dockerfile"
+          file: "dockerfile.yaml"
 
            
 
