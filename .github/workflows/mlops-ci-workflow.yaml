@@ -10,7 +10,7 @@ on:
  
 
 jobs:
-  workflow:
+  EndtoEnd_MLOps_Workflow:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
