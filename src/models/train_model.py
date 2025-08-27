@@ -90,7 +90,7 @@ def main(args):
                             "recall": recall})
         
         # Log and register model
-        mlflow.sklearn.log_model(model, name="tunned model", input_example=X_train)
+        mlflow.sklearn.log_model(model, artifact_path="tunned model", input_example=X_train)
         model_name = model_cfg["name"]
         model_uri = f"runs:/{mlflow.active_run().info.run_id}/tunned_model"
 
