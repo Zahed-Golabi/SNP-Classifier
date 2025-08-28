@@ -25,135 +25,135 @@ on:
       tags: ["v*.*.*"]
 
 
-  jobs:
-    data-processing:
-      runs-on: ubuntu-latest
+jobs:
+  data-processing:
+    runs-on: ubuntu-latest
 
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v2
-        
-        - name: Set up python
-          uses: actions/setup-python@v2
-          with:
-            python-version: "3.11.9"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set up python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.11.9"
 
-        - name: Install dependencies
-          run: |
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-        - name: Process data
-          run: |
-            python src/data/run_processing.py --input_file "data/processed/data_scientists_featurs_snp.csv" \
-              --output_file "data/processed/cleaned_snp_data.csv"
-            
-        - name: Upload processed data
-          uses: actions/upload-artifact@v4
-          with:
-            name: processed-data
-            path: data/processed/cleaned_snp_data.csv
-        
-    model-training:
-      needs: data-processing
-      runs-on: ubuntu-latest
-
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v2
-        
-        - name: Set up python
-          uses: actions/setup-python@v2
-          with:
-            python-version: "3.11.9"
+      - name: Process data
+        run: |
+          python src/data/run_processing.py --input_file "data/processed/data_scientists_featurs_snp.csv" \
+            --output_file "data/processed/cleaned_snp_data.csv"
           
-        - name: Install dependencies
-          run: |
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
+      - name: Upload processed data
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-data
+          path: data/processed/cleaned_snp_data.csv
+      
+  model-training:
+    needs: data-processing
+    runs-on: ubuntu-latest
 
-        - name: Download processed data
-          uses: actions/download-artifact@v4
-          with:
-            name: processed-data
-            path: data/processed/
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set up python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.11.9"
+        
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-        - name: Set up MLflow
-          run: |
-            docker pull ghcr.io/mlflow/mlflow:latest
-            docker run -d -p 5000:5000 --name mlflow-server ghcr.io/mlflow/mlflow:latest mlflow server --host 0.0.0.0 --backend-store-uri sqlite:///mlflow.db
+      - name: Download processed data
+        uses: actions/download-artifact@v4
+        with:
+          name: processed-data
+          path: data/processed/
 
-        - name: Wait for MLflow to start 
-          run: |
-            for i in {1..10}; do
-              curl -f http://localhost:5000/health || sleep 5;
-            done 
+      - name: Set up MLflow
+        run: |
+          docker pull ghcr.io/mlflow/mlflow:latest
+          docker run -d -p 5000:5000 --name mlflow-server ghcr.io/mlflow/mlflow:latest mlflow server --host 0.0.0.0 --backend-store-uri sqlite:///mlflow.db
 
-        - name: Train model
-          run: |
-            mkdir -p models
-            python src/models/train_model.py \
-              --config config/model_config.yaml \
-              --data data/processed/cleaned_snp_data.csv \
-              --models_dir models/  \
-              --mlflow_tracking_uri http://localhost:5000
+      - name: Wait for MLflow to start 
+        run: |
+          for i in {1..10}; do
+            curl -f http://localhost:5000/health || sleep 5;
+          done 
 
-        - name: Upload trained model
-          uses: actions/upload-artifact@v4
-          with:
-            name: train_model
-            path: models/
+      - name: Train model
+        run: |
+          mkdir -p models
+          python src/models/train_model.py \
+            --config config/model_config.yaml \
+            --data data/processed/cleaned_snp_data.csv \
+            --models_dir models/  \
+            --mlflow_tracking_uri http://localhost:5000
 
-        - name: Clean up MLflow
-          run: |
-            docker stop mlflow-server || true
-            docker rm mlflow-server || true
+      - name: Upload trained model
+        uses: actions/upload-artifact@v4
+        with:
+          name: train_model
+          path: models/
 
-    build-and-push:
-      needs: model-training
-      runs-on: ubuntu-latest
+      - name: Clean up MLflow
+        run: |
+          docker stop mlflow-server || true
+          docker rm mlflow-server || true
 
-      steps:
-        - name: Check out code
-          uses: actions/checkout@v2
+  build-and-push:
+    needs: model-training
+    runs-on: ubuntu-latest
 
-        - name: Download trained model
-          uses: actions/download-artifact@v4
-          with:
-            name: trained-model
-            path: models/
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
 
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v1
+      - name: Download trained model
+        uses: actions/download-artifact@v4
+        with:
+          name: trained-model
+          path: models/
 
-        - name: Build and test Docker image
-          run: |
-            COMMIT_HASH=$(echo ${{ github.sha }} | cut -c1-7)
-            docker build -t docker.io/${{ vars.DOCKER_HUB_USERNAME}}/snp-classifier-model:$COMMIT_HASH -f dockerfile .
-            docker run -d -p 8000:8000 --name test-api docker.io/${{ vars.DOCKER_HUB_USERNAME }}/snp-classifier-model:$COMMIT_HASH
-            for i in {1..10}; do
-              curl -f http://localhost:8000/health && break || sleep 5;
-            done
-            docker logs test-api
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
-        - name: Clean up Test Container
-          run: |
-            docker stop test-api || true
-            docker rm test-api || true
+      - name: Build and test Docker image
+        run: |
+          COMMIT_HASH=$(echo ${{ github.sha }} | cut -c1-7)
+          docker build -t docker.io/${{ vars.DOCKER_HUB_USERNAME}}/snp-classifier-model:$COMMIT_HASH -f dockerfile .
+          docker run -d -p 8000:8000 --name test-api docker.io/${{ vars.DOCKER_HUB_USERNAME }}/snp-classifier-model:$COMMIT_HASH
+          for i in {1..10}; do
+            curl -f http://localhost:8000/health && break || sleep 5;
+          done
+          docker logs test-api
 
-        - name: Log in to Docker Container Registry
-          uses: docker/login-action@v2
-          with:
-            registry: docker.io
-            username: $ {{ vars.DOCKER_HUB_USERNAME }}
-            password: $ {{secrets.DOCKER_HUB_TOKEN }}
+      - name: Clean up Test Container
+        run: |
+          docker stop test-api || true
+          docker rm test-api || true
 
-        - name: Push docker image to Dockerhub 
-          run: |
-            COMMIT_HASH=$(echo ${{ github.sha }} | cut -c1-7)
-            docker tag docker.io/${{ vars.DOCKER_HUB_USERNAME }}/snp-classifier-model:$COMMIT_HASH docker.io/${{ vars.DOCKER_HUB_USERNAME }}/snp-classifier-model:latest
-            docker push docker.io/${{ vars.DOCKER_HUB_USERNAME}}/snp-classifier-model:$COMMIT_HASH
-            docker push docker.io/${{ vars.DOCKER_HUB_USERNAME}}/snp-classifier-model:latest
+      - name: Log in to Docker Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.io
+          username: $ {{ vars.DOCKER_HUB_USERNAME }}
+          password: $ {{secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Push docker image to Dockerhub 
+        run: |
+          COMMIT_HASH=$(echo ${{ github.sha }} | cut -c1-7)
+          docker tag docker.io/${{ vars.DOCKER_HUB_USERNAME }}/snp-classifier-model:$COMMIT_HASH docker.io/${{ vars.DOCKER_HUB_USERNAME }}/snp-classifier-model:latest
+          docker push docker.io/${{ vars.DOCKER_HUB_USERNAME}}/snp-classifier-model:$COMMIT_HASH
+          docker push docker.io/${{ vars.DOCKER_HUB_USERNAME}}/snp-classifier-model:latest
 
   
 
