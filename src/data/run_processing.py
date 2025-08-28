@@ -3,6 +3,7 @@ import pandas as pd
 import logging
 from pathlib import Path
 import os
+import argparse
 
 
 # set up logging
@@ -89,9 +90,16 @@ def process_data(input_file, output_file):
 
 
 if __name__ == "__main__":
+
+    Parser = argparse.ArgumentParser(description="input data and output data")
+    Parser.add_argument("-i", "--input_file", default="data/processed/data_scientists_featurs_snp.csv")
+    Parser.add_argument("-o", "--output_file", default="data/processed/cleaned_snp_data.csv")
+
+    args = Parser.parse_args()
     # Example usage
-    process_data(input_file="data/processed/data_scientists_featurs_snp.csv",
-                 output_file="data/processed/cleaned_snp_data.csv")
+    
+    process_data(input_file=args.input_file,
+                 output_file=args.output_file)
 
 
         
