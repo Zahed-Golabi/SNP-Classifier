@@ -101,7 +101,7 @@ jobs:
       - name: Upload trained model
         uses: actions/upload-artifact@v4
         with:
-          name: train_model
+          name: trained-model
           path: models/
 
       - name: Clean up MLflow
